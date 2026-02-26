@@ -104,7 +104,7 @@ export default function RequestMarkers({
                 <p className="text-gray-500 text-xs mb-1">{r.neighborhood}</p>
                 {r.commentsCount > 0 && !isResolved && (
                   <p className="text-emerald-600 text-xs font-medium mb-2">
-                    💬 {r.commentsCount} atualização{r.commentsCount !== 1 ? 'ões' : ''} de ajuda enviada
+                    💬 {r.commentsCount} {r.commentsCount !== 1 ? 'atualizações' : 'atualização'} de ajuda enviada
                   </p>
                 )}
                 <Link
