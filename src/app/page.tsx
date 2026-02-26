@@ -124,7 +124,7 @@ export default function HomePage() {
         </main>
 
         {/* Sidebar — bottom on mobile, left on desktop */}
-        <aside className="flex flex-col overflow-hidden md:w-96 flex-shrink-0 order-last md:order-first border-t md:border-t-0 md:border-r border-gray-200 bg-white min-h-0">
+        <aside className="flex flex-col overflow-hidden md:w-96 flex-1 md:flex-none order-last md:order-first border-t md:border-t-0 md:border-r border-gray-200 bg-white min-h-0">
           <FilterBar filters={filters} onChange={setFilters} />
 
           {fetchError ? (
