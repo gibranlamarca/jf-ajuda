@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Request {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String
+  helpTypes           String    // JSON array: e.g. ["Alimentos","Água"]
+  urgency             Int       // 1 (low) to 5 (critical)
+  neighborhood        String
+  lat                 Float
+  lng                 Float
+  addressLabel        String?
+  contactName         String?
+  contactPhone        String?
+  status              String    @default("OPEN") // OPEN | RESOLVED
+  resolutionTokenHash String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  resolvedAt          DateTime?
+  resolvedReason      String?
+  resolvedByMethod    String?   // TOKEN | COMMUNITY
+  reportsCount        Int       @default(0)
+  confirmationsCount  Int       @default(0)
+
+  confirmations Confirmation[]
+  reports       Report[]
+
+  @@index([status])
+  @@index([urgency])
+  @@index([neighborhood])
+  @@index([createdAt])
+}
+
+model Confirmation {
+  id        String   @id @default(cuid())
+  requestId String
+  ipHash    String
+  createdAt DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, ipHash])
+  @@index([requestId])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  requestId String
+  ipHash    String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, ipHash])
+  @@index([requestId])
+}
