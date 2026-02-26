@@ -113,6 +113,15 @@ export default function RequestMarkers({
                 >
                   Ver detalhes →
                 </Link>
+                <a
+                  href={`https://waze.com/ul?ll=${r.lat},${r.lng}&navigate=yes`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-xs font-medium underline block mt-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Rotas no Waze →
+                </a>
               </div>
             </Popup>
           </Marker>
