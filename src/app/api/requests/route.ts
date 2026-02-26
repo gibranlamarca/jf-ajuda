@@ -90,8 +90,7 @@ export async function GET(request: NextRequest) {
   const data = rows.map((r) => ({
     ...r,
     helpTypes: JSON.parse(r.helpTypes) as string[],
-    // Partially mask phone
-    contactPhone: r.contactPhone ? maskPhone(r.contactPhone) : null,
+    contactPhone: r.contactPhone ?? null,
   }))
 
   return NextResponse.json(
@@ -184,9 +183,3 @@ export async function POST(request: NextRequest) {
   )
 }
 
-function maskPhone(phone: string): string {
-  if (phone.length <= 7) return phone
-  const visible = phone.slice(0, 7)
-  const rest = phone.slice(7)
-  return visible + rest.replace(/\d/g, '*')
-}

@@ -212,11 +212,13 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
             <h3 className="text-sm font-semibold text-gray-700 mb-2">Contato</h3>
             {r.contactName && <p className="text-gray-800 text-sm font-medium">{r.contactName}</p>}
             {r.contactPhone && (
-              <p className="text-gray-600 text-sm font-mono mt-0.5">{r.contactPhone}</p>
+              <a
+                href={`tel:${r.contactPhone.replace(/\D/g, '')}`}
+                className="text-red-700 text-sm font-mono mt-0.5 hover:underline block"
+              >
+                {r.contactPhone}
+              </a>
             )}
-            <p className="text-xs text-gray-400 mt-1">
-              Número parcialmente ocultado por privacidade.
-            </p>
           </div>
         )}
 

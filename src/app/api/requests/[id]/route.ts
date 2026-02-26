@@ -40,13 +40,6 @@ export async function GET(
   return NextResponse.json({
     ...req,
     helpTypes: JSON.parse(req.helpTypes) as string[],
-    contactPhone: req.contactPhone ? maskPhone(req.contactPhone) : null,
+    contactPhone: req.contactPhone ?? null,
   })
-}
-
-function maskPhone(phone: string): string {
-  if (phone.length <= 7) return phone
-  const visible = phone.slice(0, 7)
-  const rest = phone.slice(7)
-  return visible + rest.replace(/\d/g, '*')
 }

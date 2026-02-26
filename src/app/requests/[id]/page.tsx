@@ -46,8 +46,7 @@ async function getRequest(id: string): Promise<HelpRequest | null> {
       createdAt: req.createdAt.toISOString(),
       updatedAt: req.updatedAt.toISOString(),
       resolvedAt: req.resolvedAt?.toISOString() ?? null,
-      // Partially mask phone for display
-      contactPhone: req.contactPhone ? maskPhone(req.contactPhone) : null,
+      contactPhone: req.contactPhone ?? null,
     }
   } catch {
     return null
@@ -67,12 +66,6 @@ async function getComments(requestId: string): Promise<Comment[]> {
   }
 }
 
-function maskPhone(phone: string): string {
-  if (phone.length <= 7) return phone
-  const visible = phone.slice(0, 7)
-  const rest = phone.slice(7)
-  return visible + rest.replace(/\d/g, '*')
-}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
