@@ -28,6 +28,7 @@ export async function GET(
       resolvedByMethod: true,
       reportsCount: true,
       confirmationsCount: true,
+      commentsCount: true,
       // Never include resolutionTokenHash
     },
   })

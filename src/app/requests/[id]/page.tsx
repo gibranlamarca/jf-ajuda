@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import RequestDetail from './RequestDetail'
-import type { HelpRequest } from '@/types'
+import type { HelpRequest, Comment } from '@/types'
 import type { Metadata } from 'next'
 
 interface PageProps {
@@ -32,6 +32,7 @@ async function getRequest(id: string): Promise<HelpRequest | null> {
         resolvedByMethod: true,
         reportsCount: true,
         confirmationsCount: true,
+        commentsCount: true,
         // Never expose resolutionTokenHash
       },
     })
@@ -50,6 +51,19 @@ async function getRequest(id: string): Promise<HelpRequest | null> {
     }
   } catch {
     return null
+  }
+}
+
+async function getComments(requestId: string): Promise<Comment[]> {
+  try {
+    const comments = await prisma.comment.findMany({
+      where: { requestId },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, content: true, createdAt: true },
+    })
+    return comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() }))
+  } catch {
+    return []
   }
 }
 
@@ -72,11 +86,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function RequestPage({ params }: PageProps) {
   const { id } = await params
-  const request = await getRequest(id)
+  const [request, initialComments] = await Promise.all([getRequest(id), getComments(id)])
 
   if (!request) {
     notFound()
   }
 
-  return <RequestDetail request={request} />
+  return <RequestDetail request={request} initialComments={initialComments} />
 }

@@ -107,6 +107,17 @@ export default function RequestCard({
         )}
       </div>
 
+      {/* Help updates indicator — visible in all modes */}
+      {r.commentsCount > 0 && !isResolved && (
+        <div className="flex items-center gap-1 mt-1.5 mb-1 text-xs text-emerald-600 font-medium">
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          {r.commentsCount} atualização{r.commentsCount !== 1 ? 'ões' : ''} de ajuda enviada
+        </div>
+      )}
+
       {/* Footer */}
       {!compact && (
         <div className="flex items-center justify-between mt-2">
@@ -117,11 +128,26 @@ export default function RequestCard({
           >
             Ver detalhes →
           </Link>
-          {r.confirmationsCount > 0 && (
-            <span className="text-xs text-gray-400">
-              {r.confirmationsCount} confirmação(ões)
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {r.confirmationsCount > 0 && (
+              <span className="text-xs text-gray-400">
+                ✓ {r.confirmationsCount} confirmação(ões)
+              </span>
+            )}
+            {r.commentsCount > 0 && (
+              <span className="flex items-center gap-1 text-xs text-gray-400">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                {r.commentsCount} atualização{r.commentsCount !== 1 ? 'ões' : ''}
+              </span>
+            )}
+          </div>
         </div>
       )}
     </div>

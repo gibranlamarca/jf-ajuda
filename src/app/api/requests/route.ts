@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
         resolvedByMethod: true,
         reportsCount: true,
         confirmationsCount: true,
+        commentsCount: true,
         // Never include resolutionTokenHash
       },
     }),

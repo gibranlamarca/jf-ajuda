@@ -15,6 +15,12 @@ export type HelpType = (typeof HELP_TYPES)[number]
 
 export type RequestStatus = 'OPEN' | 'RESOLVED'
 
+export interface Comment {
+  id: string
+  content: string
+  createdAt: string
+}
+
 export interface HelpRequest {
   id: string
   title: string
@@ -35,6 +41,7 @@ export interface HelpRequest {
   resolvedByMethod?: string | null
   reportsCount: number
   confirmationsCount: number
+  commentsCount: number
 }
 
 export interface PaginatedResponse<T> {

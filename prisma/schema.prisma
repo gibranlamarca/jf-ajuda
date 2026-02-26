@@ -31,9 +31,11 @@ model Request {
   resolvedByMethod    String?   // TOKEN | COMMUNITY
   reportsCount        Int       @default(0)
   confirmationsCount  Int       @default(0)
+  commentsCount       Int       @default(0)
 
   confirmations Confirmation[]
   reports       Report[]
+  comments      Comment[]
 
   @@index([status])
   @@index([urgency])
@@ -64,4 +66,16 @@ model Report {
 
   @@unique([requestId, ipHash])
   @@index([requestId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  requestId String
+  content   String
+  ipHash    String
+  createdAt DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, createdAt])
 }

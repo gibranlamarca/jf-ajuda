@@ -17,20 +17,26 @@ const URGENCY_HEX: Record<number, string> = {
 // Icons are created lazily (inside functions) to avoid calling L.divIcon()
 // at module load time, which can trigger issues before the browser is ready.
 
-function createOpenIcon(urgency: number): L.DivIcon {
+function createOpenIcon(urgency: number, commentsCount: number): L.DivIcon {
   const color = URGENCY_HEX[urgency] ?? '#ef4444'
   const size = urgency >= 5 ? 22 : urgency >= 4 ? 20 : 18
+  const badge = commentsCount > 0
+    ? `<div style="position:absolute;top:-5px;right:-5px;background:white;border:1.5px solid #059669;border-radius:9999px;font-size:8px;line-height:1;padding:1px 3px;font-weight:700;color:#059669;min-width:14px;text-align:center;">${commentsCount > 9 ? '9+' : commentsCount}</div>`
+    : ''
   return L.divIcon({
     className: '',
-    html: `<div style="
-      width:${size}px;
-      height:${size}px;
-      background:${color};
-      border:2.5px solid white;
-      border-radius:50%;
-      box-shadow:0 2px 8px rgba(0,0,0,0.45);
-      cursor:pointer;
-    "></div>`,
+    html: `<div style="position:relative;display:inline-block;">
+      <div style="
+        width:${size}px;
+        height:${size}px;
+        background:${color};
+        border:2.5px solid white;
+        border-radius:50%;
+        box-shadow:0 2px 8px rgba(0,0,0,0.45);
+        cursor:pointer;
+      "></div>
+      ${badge}
+    </div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -size / 2 - 4],
@@ -71,7 +77,7 @@ export default function RequestMarkers({
       {requests.map((r) => {
         const isResolved = r.status === 'RESOLVED'
         const isSelected = r.id === selectedId
-        const icon = isResolved ? createResolvedIcon() : createOpenIcon(r.urgency)
+        const icon = isResolved ? createResolvedIcon() : createOpenIcon(r.urgency, r.commentsCount)
 
         return (
           <Marker
@@ -95,7 +101,12 @@ export default function RequestMarkers({
                   </span>
                 </div>
                 <p className="font-semibold text-gray-900 leading-tight mb-0.5">{r.title}</p>
-                <p className="text-gray-500 text-xs mb-2">{r.neighborhood}</p>
+                <p className="text-gray-500 text-xs mb-1">{r.neighborhood}</p>
+                {r.commentsCount > 0 && !isResolved && (
+                  <p className="text-emerald-600 text-xs font-medium mb-2">
+                    💬 {r.commentsCount} atualização{r.commentsCount !== 1 ? 'ões' : ''} de ajuda enviada
+                  </p>
+                )}
                 <Link
                   href={`/requests/${r.id}`}
                   className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"

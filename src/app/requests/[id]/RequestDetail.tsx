@@ -4,7 +4,7 @@ import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import ResolveModal from '@/components/ResolveModal'
-import type { HelpRequest } from '@/types'
+import type { HelpRequest, Comment } from '@/types'
 import { URGENCY_CONFIG, HELP_TYPE_COLORS, formatTimeAgo } from '@/types'
 
 const MiniMapPreview = dynamic(() => import('@/components/map/MiniMapPreview'), {
@@ -14,9 +14,10 @@ const MiniMapPreview = dynamic(() => import('@/components/map/MiniMapPreview'), 
 
 interface RequestDetailProps {
   request: HelpRequest
+  initialComments: Comment[]
 }
 
-export default function RequestDetail({ request: r }: RequestDetailProps) {
+export default function RequestDetail({ request: r, initialComments }: RequestDetailProps) {
   const [showResolve, setShowResolve] = useState(false)
   const [resolved, setResolved] = useState(r.status === 'RESOLVED')
   const [confirming, setConfirming] = useState(false)
@@ -24,6 +25,12 @@ export default function RequestDetail({ request: r }: RequestDetailProps) {
   const [reporting, setReporting] = useState(false)
   const [reportMessage, setReportMessage] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  const [comments, setComments] = useState<Comment[]>(initialComments)
+  const [commentText, setCommentText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [commentError, setCommentError] = useState<string | null>(null)
+  const [commentSuccess, setCommentSuccess] = useState(false)
 
   const isResolved = resolved
 
@@ -64,6 +71,33 @@ export default function RequestDetail({ request: r }: RequestDetailProps) {
       setReportMessage('Erro ao reportar. Tente novamente.')
     } finally {
       setReporting(false)
+    }
+  }
+
+  const handleCommentSubmit = async () => {
+    const content = commentText.trim()
+    if (!content) return
+    setSubmitting(true)
+    setCommentError(null)
+    try {
+      const res = await fetch(`/api/requests/${r.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, _hp: '' }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setCommentError(data.error ?? 'Erro ao enviar comentário.')
+        return
+      }
+      setComments((prev) => [...prev, data as Comment])
+      setCommentText('')
+      setCommentSuccess(true)
+      setTimeout(() => setCommentSuccess(false), 3000)
+    } catch {
+      setCommentError('Erro ao enviar comentário. Tente novamente.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -202,6 +236,82 @@ export default function RequestDetail({ request: r }: RequestDetailProps) {
             📍 {r.addressLabel}
           </p>
         )}
+
+        {/* Comments — help updates */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+            Atualizações de quem ajudou
+            {comments.length > 0 && (
+              <span className="ml-auto text-xs font-normal text-gray-400">{comments.length}</span>
+            )}
+          </h3>
+
+          {/* Comment list */}
+          {comments.length > 0 ? (
+            <ul className="space-y-2">
+              {comments.map((c) => (
+                <li key={c.id} className="bg-gray-50 rounded-lg px-3 py-2.5">
+                  <p className="text-gray-800 text-sm leading-relaxed">{c.content}</p>
+                  <p className="text-gray-400 text-xs mt-1">{formatTimeAgo(c.createdAt)}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            !isResolved && (
+              <p className="text-gray-400 text-xs">
+                Nenhuma atualização ainda. Seja o primeiro a registrar o que foi enviado.
+              </p>
+            )
+          )}
+
+          {/* Comment form — only for open requests */}
+          {!isResolved && (
+            <div className="space-y-2 pt-1">
+              <textarea
+                value={commentText}
+                onChange={(e) => {
+                  setCommentText(e.target.value.slice(0, 300))
+                  setCommentError(null)
+                }}
+                placeholder='Ex: Já foram enviados 10 fardos de água pelo grupo X'
+                rows={2}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-transparent placeholder-gray-400"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className={`text-xs ${commentText.length >= 280 ? 'text-orange-500' : 'text-gray-400'}`}>
+                  {commentText.length}/300
+                </span>
+                <button
+                  onClick={handleCommentSubmit}
+                  disabled={submitting || commentText.trim().length < 5}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitting ? (
+                    <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : null}
+                  {submitting ? 'Enviando...' : 'Registrar ajuda enviada'}
+                </button>
+              </div>
+              {commentError && (
+                <p className="text-red-600 text-xs">{commentError}</p>
+              )}
+              {commentSuccess && (
+                <p className="text-green-600 text-xs">✓ Atualização registrada com sucesso!</p>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Action buttons */}
         <div className="space-y-2 pb-8">

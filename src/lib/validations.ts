@@ -36,4 +36,12 @@ export const reportSchema = z.object({
   reason: z.string().max(500).optional(),
 })
 
+export const createCommentSchema = z.object({
+  content: z
+    .string()
+    .min(5, 'Comentário deve ter pelo menos 5 caracteres')
+    .max(300, 'Comentário deve ter no máximo 300 caracteres'),
+  _hp: z.string().optional(),
+})
+
 export type CreateRequestInput = z.infer<typeof createRequestSchema>
