@@ -87,9 +87,9 @@ export default function HomePage() {
 
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 bg-white text-red-700 font-bold px-4 py-2 rounded-xl hover:bg-red-50 transition-all shadow-sm text-sm active:scale-95"
+          className="flex items-center gap-1 bg-white text-red-700 font-bold px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl hover:bg-red-50 transition-all shadow-sm text-xs md:text-sm active:scale-95"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
           Pedir ajuda
