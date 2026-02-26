@@ -25,6 +25,7 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
   const [reporting, setReporting] = useState(false)
   const [reportMessage, setReportMessage] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [showNav, setShowNav] = useState(false)
 
   const [comments, setComments] = useState<Comment[]>(initialComments)
   const [commentText, setCommentText] = useState('')
@@ -35,6 +36,10 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
   const isResolved = resolved
 
   const urgency = URGENCY_CONFIG[r.urgency]
+
+  const wazeUrl = `https://waze.com/ul?ll=${r.lat},${r.lng}&navigate=yes`
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lng}`
+  const appleMapsUrl = `https://maps.apple.com/?daddr=${r.lat},${r.lng}`
 
   const copyLocation = async () => {
     const text = `https://www.openstreetmap.org/?mlat=${r.lat}&mlon=${r.lng}#map=17/${r.lat}/${r.lng}`
@@ -317,6 +322,64 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
 
         {/* Action buttons */}
         <div className="space-y-2 pb-8">
+          {/* Como chegar */}
+          <div>
+            <button
+              onClick={() => setShowNav(!showNav)}
+              className="w-full flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                />
+              </svg>
+              Como chegar
+              <svg
+                className={`w-3.5 h-3.5 ml-auto transition-transform ${showNav ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showNav && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                <a
+                  href={wazeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-1.5 py-3 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                >
+                  <span className="text-base">🗺️</span>
+                  Waze
+                </a>
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-1.5 py-3 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                >
+                  <span className="text-base">📍</span>
+                  Google Maps
+                </a>
+                <a
+                  href={appleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-1.5 py-3 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                >
+                  <span className="text-base">🍎</span>
+                  Apple Maps
+                </a>
+              </div>
+            )}
+          </div>
+
           {/* Copy location */}
           <button
             onClick={copyLocation}
