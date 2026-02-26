@@ -40,3 +40,6 @@ next-env.d.ts
 *.db-wal
 *.db-shm
 /prisma/*.db
+
+# Local Netlify folder
+.netlify
