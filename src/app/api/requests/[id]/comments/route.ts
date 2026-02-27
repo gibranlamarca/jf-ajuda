@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { createCommentSchema } from '@/lib/validations'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { verifyToken } from '@/lib/token'
 import crypto from 'crypto'
 
 function hashIp(ip: string): string {
@@ -34,7 +35,7 @@ export async function GET(
   const comments = await prisma.comment.findMany({
     where: { requestId: id },
     orderBy: { createdAt: 'asc' },
-    select: { id: true, content: true, createdAt: true },
+    select: { id: true, content: true, isCreatorUpdate: true, createdAt: true },
   })
 
   const data = comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() }))
@@ -50,7 +51,7 @@ export async function POST(
 
   const req = await prisma.request.findUnique({
     where: { id },
-    select: { id: true, status: true },
+    select: { id: true, status: true, resolutionTokenHash: true },
   })
 
   if (!req) {
@@ -96,17 +97,38 @@ export async function POST(
     )
   }
 
-  const { content } = parsed.data
+  const { content, token } = parsed.data
   const ipHash = hashIp(ip)
+
+  // Verify creator token if provided
+  let isCreatorUpdate = false
+  if (token) {
+    const tokenValid = req.resolutionTokenHash && verifyToken(token, req.resolutionTokenHash)
+    if (!tokenValid) {
+      return NextResponse.json(
+        { error: 'Código de acesso inválido. Verifique e tente novamente.' },
+        { status: 403 },
+      )
+    }
+    isCreatorUpdate = true
+  }
+
+  const updates: Parameters<typeof prisma.request.update>[0]['data'] = {
+    commentsCount: { increment: 1 },
+  }
+  // Creator update reactivates a stale request
+  if (isCreatorUpdate && req.status === 'STALE') {
+    updates.status = 'OPEN'
+  }
 
   const [comment] = await prisma.$transaction([
     prisma.comment.create({
-      data: { requestId: id, content, ipHash },
-      select: { id: true, content: true, createdAt: true },
+      data: { requestId: id, content, ipHash, isCreatorUpdate },
+      select: { id: true, content: true, isCreatorUpdate: true, createdAt: true },
     }),
     prisma.request.update({
       where: { id },
-      data: { commentsCount: { increment: 1 } },
+      data: updates,
     }),
   ])
 

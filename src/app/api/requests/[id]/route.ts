@@ -37,9 +37,15 @@ export async function GET(
     return NextResponse.json({ error: 'Pedido não encontrado.' }, { status: 404 })
   }
 
+  const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000)
+  const activeVolunteersCount = await prisma.volunteer.count({
+    where: { requestId: id, createdAt: { gte: fourHoursAgo } },
+  })
+
   return NextResponse.json({
     ...req,
     helpTypes: JSON.parse(req.helpTypes) as string[],
     contactPhone: req.contactPhone ?? null,
+    activeVolunteersCount,
   })
 }

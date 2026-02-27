@@ -22,7 +22,7 @@ model Request {
   addressLabel        String?
   contactName         String?
   contactPhone        String?
-  status              String    @default("OPEN") // OPEN | RESOLVED
+  status              String    @default("OPEN") // OPEN | STALE | RESOLVED
   resolutionTokenHash String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -36,6 +36,7 @@ model Request {
   confirmations Confirmation[]
   reports       Report[]
   comments      Comment[]
+  volunteers    Volunteer[]
 
   @@index([status])
   @@index([urgency])
@@ -69,13 +70,26 @@ model Report {
 }
 
 model Comment {
+  id              String   @id @default(cuid())
+  requestId       String
+  content         String
+  ipHash          String
+  isCreatorUpdate Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, createdAt])
+}
+
+model Volunteer {
   id        String   @id @default(cuid())
   requestId String
-  content   String
   ipHash    String
   createdAt DateTime @default(now())
 
   request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
-  @@index([requestId, createdAt])
+  @@unique([requestId, ipHash])
+  @@index([requestId])
 }

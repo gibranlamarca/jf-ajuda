@@ -40,7 +40,8 @@ export const createCommentSchema = z.object({
   content: z
     .string()
     .min(5, 'Comentário deve ter pelo menos 5 caracteres')
-    .max(300, 'Comentário deve ter no máximo 300 caracteres'),
+    .max(500, 'Comentário deve ter no máximo 500 caracteres'),
+  token: z.string().max(128).optional(),
   _hp: z.string().optional(),
 })
 

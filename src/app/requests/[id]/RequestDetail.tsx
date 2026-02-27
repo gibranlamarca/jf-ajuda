@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import ResolveModal from '@/components/ResolveModal'
-import type { HelpRequest, Comment } from '@/types'
+import type { HelpRequest, Comment, RequestStatus } from '@/types'
 import { URGENCY_CONFIG, HELP_TYPE_COLORS, formatTimeAgo } from '@/types'
 
 const MiniMapPreview = dynamic(() => import('@/components/map/MiniMapPreview'), {
@@ -20,6 +20,7 @@ interface RequestDetailProps {
 export default function RequestDetail({ request: r, initialComments }: RequestDetailProps) {
   const [showResolve, setShowResolve] = useState(false)
   const [resolved, setResolved] = useState(r.status === 'RESOLVED')
+  const [currentStatus, setCurrentStatus] = useState<RequestStatus>(r.status)
   const [confirming, setConfirming] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null)
   const [reporting, setReporting] = useState(false)
@@ -33,7 +34,27 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
   const [commentError, setCommentError] = useState<string | null>(null)
   const [commentSuccess, setCommentSuccess] = useState(false)
 
-  const isResolved = resolved
+  // "Estou a caminho" state
+  const [volunteerCount, setVolunteerCount] = useState(r.activeVolunteersCount ?? 0)
+  const [volunteering, setVolunteering] = useState(false)
+  const [hasVolunteered, setHasVolunteered] = useState(false)
+
+  // Creator update state
+  const [showCreatorSection, setShowCreatorSection] = useState(false)
+  const [creatorToken, setCreatorToken] = useState('')
+  const [creatorContent, setCreatorContent] = useState('')
+  const [creatorSubmitting, setCreatorSubmitting] = useState(false)
+  const [creatorError, setCreatorError] = useState<string | null>(null)
+  const [creatorSuccess, setCreatorSuccess] = useState(false)
+
+  useEffect(() => {
+    if (localStorage.getItem(`volunteered-${r.id}`)) {
+      setHasVolunteered(true)
+    }
+  }, [r.id])
+
+  const isResolved = currentStatus === 'RESOLVED' || resolved
+  const isStale = currentStatus === 'STALE' && !isResolved
 
   const urgency = URGENCY_CONFIG[r.urgency]
 
@@ -79,6 +100,23 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
     }
   }
 
+  const handleVolunteer = async () => {
+    setVolunteering(true)
+    try {
+      const res = await fetch(`/api/requests/${r.id}/volunteer`, { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        setVolunteerCount(data.activeCount)
+        setHasVolunteered(true)
+        localStorage.setItem(`volunteered-${r.id}`, '1')
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setVolunteering(false)
+    }
+  }
+
   const handleCommentSubmit = async () => {
     const content = commentText.trim()
     if (!content) return
@@ -103,6 +141,39 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
       setCommentError('Erro ao enviar comentário. Tente novamente.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleCreatorUpdate = async () => {
+    const content = creatorContent.trim()
+    if (!content || !creatorToken.trim()) return
+    setCreatorSubmitting(true)
+    setCreatorError(null)
+    try {
+      const res = await fetch(`/api/requests/${r.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, token: creatorToken.trim(), _hp: '' }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setCreatorError(data.error ?? 'Erro ao publicar atualização.')
+        return
+      }
+      setComments((prev) => [...prev, data as Comment])
+      setCreatorContent('')
+      setCreatorToken('')
+      setCreatorSuccess(true)
+      setTimeout(() => setCreatorSuccess(false), 3000)
+      // Creator update reactivates a stale request
+      if (currentStatus === 'STALE') {
+        setCurrentStatus('OPEN')
+      }
+      setShowCreatorSection(false)
+    } catch {
+      setCreatorError('Erro ao publicar. Tente novamente.')
+    } finally {
+      setCreatorSubmitting(false)
     }
   }
 
@@ -132,13 +203,19 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
         <div className="flex flex-wrap gap-2">
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${
-              isResolved ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              isResolved
+                ? 'bg-green-100 text-green-700'
+                : isStale
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-red-100 text-red-700'
             }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${isResolved ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`}
+              className={`w-2 h-2 rounded-full ${
+                isResolved ? 'bg-green-500' : isStale ? 'bg-amber-500' : 'bg-red-500 animate-pulse'
+              }`}
             />
-            {isResolved ? 'Resolvido' : 'Precisando de ajuda'}
+            {isResolved ? 'Resolvido' : isStale ? 'Aguardando atualização' : 'Precisando de ajuda'}
           </span>
 
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${urgency?.badge}`}>
@@ -237,6 +314,33 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
           </div>
         )}
 
+        {/* "Estou a caminho" */}
+        {!isResolved && (
+          <div className="flex items-center justify-between bg-blue-50 rounded-xl border border-blue-100 p-4 gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-blue-800">
+                {volunteerCount > 0
+                  ? `${volunteerCount} pessoa${volunteerCount > 1 ? 's' : ''} a caminho`
+                  : 'Ninguém está a caminho ainda'}
+              </p>
+              <p className="text-xs text-blue-500 mt-0.5">Registros expiram após 4 horas</p>
+            </div>
+            <button
+              onClick={handleVolunteer}
+              disabled={volunteering || hasVolunteered}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
+            >
+              {volunteering ? (
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : null}
+              {hasVolunteered ? '✓ A caminho' : volunteering ? '...' : 'Estou a caminho'}
+            </button>
+          </div>
+        )}
+
         {/* Address label */}
         {r.addressLabel && (
           <p className="text-xs text-gray-400 bg-gray-100 rounded-lg px-3 py-2">
@@ -265,7 +369,27 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
           {comments.length > 0 ? (
             <ul className="space-y-2">
               {comments.map((c) => (
-                <li key={c.id} className="bg-gray-50 rounded-lg px-3 py-2.5">
+                <li
+                  key={c.id}
+                  className={`rounded-lg px-3 py-2.5 ${
+                    c.isCreatorUpdate
+                      ? 'bg-green-50 border border-green-200'
+                      : 'bg-gray-50'
+                  }`}
+                >
+                  {c.isCreatorUpdate && (
+                    <p className="text-green-700 text-xs font-semibold mb-1 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                      Criador do pedido
+                    </p>
+                  )}
                   <p className="text-gray-800 text-sm leading-relaxed">{c.content}</p>
                   <p className="text-gray-400 text-xs mt-1">{formatTimeAgo(c.createdAt)}</p>
                 </li>
@@ -279,7 +403,7 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
             )
           )}
 
-          {/* Comment form — only for open requests */}
+          {/* Comment form — only for open/stale requests */}
           {!isResolved && (
             <div className="space-y-2 pt-1">
               <textarea
@@ -319,6 +443,83 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
             </div>
           )}
         </div>
+
+        {/* Creator update section */}
+        {!isResolved && (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setShowCreatorSection(!showCreatorSection)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                Sou o criador e quero atualizar a situação
+              </span>
+              <svg
+                className={`w-4 h-4 text-gray-400 transition-transform ${showCreatorSection ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showCreatorSection && (
+              <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+                <textarea
+                  value={creatorContent}
+                  onChange={(e) => {
+                    setCreatorContent(e.target.value.slice(0, 500))
+                    setCreatorError(null)
+                  }}
+                  placeholder="O que mudou? Ex: Já recebi água, ainda preciso de alimentos..."
+                  rows={3}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-transparent placeholder-gray-400"
+                />
+                <span
+                  className={`block text-xs ${creatorContent.length >= 480 ? 'text-orange-500' : 'text-gray-400'}`}
+                >
+                  {creatorContent.length}/500
+                </span>
+                <input
+                  type="text"
+                  value={creatorToken}
+                  onChange={(e) => {
+                    setCreatorToken(e.target.value)
+                    setCreatorError(null)
+                  }}
+                  placeholder="Seu código de acesso (salvo ao criar o pedido)"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-transparent placeholder-gray-400 font-mono"
+                />
+                <button
+                  onClick={handleCreatorUpdate}
+                  disabled={creatorSubmitting || creatorContent.trim().length < 5 || !creatorToken.trim()}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creatorSubmitting ? (
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : null}
+                  {creatorSubmitting ? 'Publicando...' : 'Publicar atualização'}
+                </button>
+                {creatorError && <p className="text-red-600 text-xs">{creatorError}</p>}
+                {creatorSuccess && (
+                  <p className="text-green-600 text-xs">✓ Atualização publicada com sucesso!</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="space-y-2 pb-8">
@@ -395,6 +596,21 @@ export default function RequestDetail({ request: r, initialComments }: RequestDe
             </svg>
             {copied ? '✓ Link copiado!' : 'Copiar link da localização'}
           </button>
+
+          {/* Share on WhatsApp */}
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(
+              `Pedido de ajuda em ${r.neighborhood}, Juiz de Fora!\n${r.title}\n\nVeja o pedido: ${typeof window !== 'undefined' ? window.location.href : `https://jfajuda.vercel.app/requests/${r.id}`}`,
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 py-3 border border-green-300 text-green-700 rounded-xl text-sm font-medium hover:bg-green-50 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+            </svg>
+            Compartilhar no WhatsApp
+          </a>
 
           {!isResolved && (
             <>
