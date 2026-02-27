@@ -42,7 +42,7 @@ async function getRequest(id: string): Promise<HelpRequest | null> {
     return {
       ...req,
       helpTypes: JSON.parse(req.helpTypes) as HelpRequest['helpTypes'],
-      status: req.status as 'OPEN' | 'RESOLVED',
+      status: req.status as 'OPEN' | 'STALE' | 'RESOLVED',
       createdAt: req.createdAt.toISOString(),
       updatedAt: req.updatedAt.toISOString(),
       resolvedAt: req.resolvedAt?.toISOString() ?? null,
@@ -58,7 +58,7 @@ async function getComments(requestId: string): Promise<Comment[]> {
     const comments = await prisma.comment.findMany({
       where: { requestId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, content: true, createdAt: true },
+      select: { id: true, content: true, isCreatorUpdate: true, createdAt: true },
     })
     return comments.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() }))
   } catch {

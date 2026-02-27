@@ -29,8 +29,13 @@ export async function GET(request: NextRequest) {
   // Build WHERE conditions using AND array for composability
   const conditions: Prisma.RequestWhereInput[] = []
 
-  if (status && ['OPEN', 'RESOLVED'].includes(status)) {
-    conditions.push({ status })
+  if (status === 'OPEN') {
+    // OPEN filter includes STALE (both still need help)
+    conditions.push({ status: { in: ['OPEN', 'STALE'] } })
+  } else if (status === 'RESOLVED') {
+    conditions.push({ status: 'RESOLVED' })
+  } else if (status === 'STALE') {
+    conditions.push({ status: 'STALE' })
   }
   if (urgencyMin !== undefined && !isNaN(urgencyMin)) {
     conditions.push({ urgency: { gte: urgencyMin } })

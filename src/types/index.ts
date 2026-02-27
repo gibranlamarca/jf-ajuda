@@ -13,11 +13,12 @@ export const HELP_TYPES = [
 
 export type HelpType = (typeof HELP_TYPES)[number]
 
-export type RequestStatus = 'OPEN' | 'RESOLVED'
+export type RequestStatus = 'OPEN' | 'STALE' | 'RESOLVED'
 
 export interface Comment {
   id: string
   content: string
+  isCreatorUpdate: boolean
   createdAt: string
 }
 
@@ -42,6 +43,7 @@ export interface HelpRequest {
   reportsCount: number
   confirmationsCount: number
   commentsCount: number
+  activeVolunteersCount?: number
 }
 
 export interface PaginatedResponse<T> {
